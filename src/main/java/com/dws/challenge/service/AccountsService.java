@@ -32,7 +32,7 @@ public class AccountsService {
 	}
 
 	// Transfer money between two accounts
-	public synchronized void transferMoney(String accountFromId, String accountToId, BigDecimal amount) {
+	public void transferMoney(String accountFromId, String accountToId, BigDecimal amount) {
 		if (amount.compareTo(BigDecimal.ZERO) <= 0) {
 			throw new IllegalArgumentException("Transfer amount must be positive.");
 		}
@@ -47,9 +47,12 @@ public class AccountsService {
 			throw new AccountNotFoundException("Account with ID " + accountToId + " not found.");
 		}
 
-		// Synchronize on both accounts to avoid deadlock
-		synchronized (accountFrom) {
-			synchronized (accountTo) {
+		// Ensure consistent locking order based on account IDs to avoid deadlock
+		Account firstLock = accountFromId.compareTo(accountToId) < 0 ? accountFrom : accountTo;
+		Account secondLock = firstLock == accountFrom ? accountTo : accountFrom;
+
+		synchronized (firstLock) {
+			synchronized (secondLock) {
 				if (accountFrom.getBalance().compareTo(amount) < 0) {
 					throw new InsufficientBalanceException("Insufficient balance in account " + accountFromId);
 				}
